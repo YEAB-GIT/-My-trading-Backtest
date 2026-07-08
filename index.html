@@ -498,6 +498,20 @@ textarea{min-height:70px;resize:vertical}
   </div>
 </div>
 
+<!-- PIN MODAL -->
+<div class="mo" id="pin-modal">
+  <div class="modal" style="max-width:420px;text-align:center">
+    <div style="font-size:36px;margin-bottom:10px">🔗</div>
+    <div class="mt" style="margin-bottom:8px">Set Your Journal PIN</div>
+    <p style="color:var(--text2);font-size:13px;line-height:1.7;margin-bottom:16px">Use the <strong>exact same PIN on every device</strong> (phone, laptop) to keep your data synced together.</p>
+    <input type="text" id="pin-input" placeholder="e.g. myjournal2026" style="width:100%;padding:12px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:15px;text-align:center;margin-bottom:12px" autocapitalize="off" autocorrect="off">
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <button class="btn-primary" id="pin-submit"><i class="ti ti-check"></i> Save &amp; Sync</button>
+      <button class="btn-secondary" id="pin-skip">Skip — use this device only</button>
+    </div>
+  </div>
+</div>
+
 <!-- RESTORE MODAL -->
 <div class="mo" id="restore-modal">
   <div class="modal" style="max-width:440px;text-align:center">
@@ -1234,15 +1248,29 @@ function initApp2(){
   if(db.settings?.accent){document.documentElement.style.setProperty('--accent',db.settings.accent);document.documentElement.style.setProperty('--accent2',db.settings.accent2||db.settings.accent);document.documentElement.style.setProperty('--accent-dim',db.settings.accent+'22');}
   renderDash();setSaveStatus('saved');
 }
+function askPinModal(){
+  return new Promise(resolve=>{
+    const modal=document.getElementById('pin-modal');
+    const input=document.getElementById('pin-input');
+    input.value='';
+    modal.classList.add('open');
+    setTimeout(()=>input.focus(),200);
+    const submit=document.getElementById('pin-submit');
+    const skip=document.getElementById('pin-skip');
+    const onSubmit=()=>{const v=input.value.trim();if(!v){input.focus();return;}cleanup();modal.classList.remove('open');resolve(v);};
+    const onSkip=()=>{cleanup();modal.classList.remove('open');resolve('');};
+    const onKey=(e)=>{if(e.key==='Enter')onSubmit();};
+    function cleanup(){submit.removeEventListener('click',onSubmit);skip.removeEventListener('click',onSkip);input.removeEventListener('keydown',onKey);}
+    submit.addEventListener('click',onSubmit);
+    skip.addEventListener('click',onSkip);
+    input.addEventListener('keydown',onKey);
+  });
+}
 async function boot(){
   if(FIREBASE_ENABLED){
     journalPin=localStorage.getItem('bte_pin')||'';
-    let attempts=0;
-    while(FIREBASE_ENABLED&&!journalPin&&attempts<5){
-      attempts++;
-      const entered=window.prompt('Set a Journal PIN (use the SAME PIN on every device to keep your data in sync):');
-      if(entered&&entered.trim())journalPin=entered.trim();
-      else if(entered===null)break;
+    if(!journalPin){
+      journalPin=await askPinModal();
     }
     if(journalPin)localStorage.setItem('bte_pin',journalPin);
     else showToast('⚠️ No PIN set — using local storage only on this device');
@@ -1255,10 +1283,10 @@ async function boot(){
   initApp2();
   if(db.trades.length===0)setTimeout(()=>document.getElementById('restore-modal').classList.add('open'),800);
 }
-function changeJournalPin(){
-  const entered=window.prompt('Enter the Journal PIN to sync to (use the same PIN across devices):',journalPin||'');
-  if(entered&&entered.trim()){
-    journalPin=entered.trim();
+async function changeJournalPin(){
+  const entered=await askPinModal();
+  if(entered){
+    journalPin=entered;
     localStorage.setItem('bte_pin',journalPin);
     showToast('PIN updated — reloading...');
     setTimeout(()=>location.reload(),800);
