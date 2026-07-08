@@ -401,7 +401,7 @@ textarea{min-height:70px;resize:vertical}
           <div class="sr"><div class="si"><h4>Export CSV</h4><p>All trades spreadsheet</p></div><button class="btn-secondary btn-sm" onclick="exportCSV()"><i class="ti ti-table-export"></i> Export</button></div>
           <div class="sr"><div class="si"><h4>💾 Save Backup</h4><p>JSON file — restore on any device</p></div><button class="btn-primary btn-sm" onclick="autoBackup(false)"><i class="ti ti-device-floppy"></i> Save</button></div>
           <div class="sr"><div class="si"><h4>📂 Restore Backup</h4><p>Load .json backup file</p></div><button class="btn-secondary btn-sm" onclick="document.getElementById('rfile').click()"><i class="ti ti-upload"></i> Load</button><input type="file" id="rfile" accept=".json" style="display:none" onchange="restoreBackup(this)"></div>
-          <div class="sr" id="pin-row" style="display:none"><div class="si"><h4>🔗 Journal PIN (cross-device sync)</h4><p>Use the same PIN on every device to sync</p></div><button class="btn-secondary btn-sm" onclick="changeJournalPin()"><i class="ti ti-key"></i> Change PIN</button></div>
+          <div class="sr" id="pin-row" style="display:none"><div class="si"><h4>🔗 Journal PIN (cross-device sync)</h4><p>Current PIN: <strong id="pin-display" style="color:var(--accent);user-select:all">—</strong></p></div><div style="display:flex;gap:8px"><button class="btn-secondary btn-sm" onclick="copyPin()"><i class="ti ti-copy"></i> Copy</button><button class="btn-secondary btn-sm" onclick="changeJournalPin()"><i class="ti ti-key"></i> Change</button></div></div>
         </div>
       </div>
     </div>
@@ -1275,6 +1275,7 @@ async function boot(){
     if(journalPin)localStorage.setItem('bte_pin',journalPin);
     else showToast('⚠️ No PIN set — using local storage only on this device');
     const pr=document.getElementById('pin-row');if(pr)pr.style.display='flex';
+    const pd=document.getElementById('pin-display');if(pd)pd.textContent=journalPin||'(none — local only)';
   }
   await initIDB();
   const saved=await idbLoad();
@@ -1291,6 +1292,12 @@ async function changeJournalPin(){
     showToast('PIN updated — reloading...');
     setTimeout(()=>location.reload(),800);
   }
+}
+function copyPin(){
+  if(!journalPin){showToast('No PIN set on this device');return;}
+  navigator.clipboard?.writeText(journalPin).then(()=>showToast('📋 PIN copied — paste it on your other device')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=journalPin;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('📋 PIN copied');
+  });
 }
 boot();
 </script>
